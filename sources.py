@@ -75,14 +75,28 @@ def dedupe(records):
 # Logged-out search returns a single page; passing a cursor also 403s.
 
 BLUESKY_QUERIES = [
+    # the service by name
     "\"passenger assist\"",
     "\"passenger assistance\" train",
     "\"assisted travel\" rail",
-    "wheelchair train station staff",
-    "ramp train platform disabled",
+    # what people actually say when it fails
     "\"no one met me\" train",
-    "accessible train travel UK",
-    "disabled rail travel",
+    "\"nobody came\" train wheelchair",
+    "\"left on the train\" wheelchair",
+    "\"no ramp\" train platform",
+    "\"stranded\" station wheelchair",
+    "booked assistance train didn't",
+    # the equipment and the people
+    "wheelchair train station staff",
+    "mobility scooter train uk",
+    "guide dog train station",
+    "step-free access station",
+    # operators, where complaints get tagged
+    "avanti wheelchair assistance",
+    "lner assistance disabled",
+    "northern rail wheelchair",
+    "scotrail assistance disabled",
+    "gwr passenger assist",
 ]
 
 
@@ -281,7 +295,7 @@ def fetch_youtube(queries=None, max_videos=8, max_comments=100):
         for item in r.json().get("items", []):
             s = item["snippet"]["topLevelComment"]["snippet"]
             out.append(make_record(
-                "youtube", item["id"],s.get("authorDisplayName", "").lstrip("@"),,
+                "youtube", item["id"],s.get("authorDisplayName", "").lstrip("@"),
                 s.get("textOriginal", ""), s.get("publishedAt", ""),
                 f"https://www.youtube.com/watch?v={vid}&lc={item['id']}",
                 {"video_id": vid, "video_title": title},
