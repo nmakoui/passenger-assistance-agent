@@ -13,7 +13,7 @@ import argparse
 import json
 import os
 from collections import Counter
-from datetime import datetime, time
+from datetime import datetime
 
 import agent
 import sources
