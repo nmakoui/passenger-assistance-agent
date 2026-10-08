@@ -252,17 +252,24 @@ Rules, all mandatory:
 - Never ask for personal details in public. Offer a private channel or the
   operator's official complaints route instead.
 - Never blame the passenger, the staff, or any named individual.
+- Do not agree that the service is bad, broken, or an afterthought. Acknowledge
+  what happened to this person without endorsing a judgement about the service.
+  - Only refer to things the post actually says happened. If the person is
+  describing a general worry or a pattern rather than their own incident, do
+  not write as though they personally experienced it.
 - No corporate filler. Not "we value your feedback", not "sorry for any
   inconvenience caused". Write like a person.
-- Under 280 characters for bluesky. Under 120 words elsewhere.
-- British English.
+- Warm does not mean chatty. Do not joke, do not comment on pets, children,
+  holidays or anything incidental the person mentioned. Stay on the assistance.
+- Two sentences is usually enough. Under 280 characters for bluesky, under 120
+  words elsewhere.
+- British English. Plain words.
 - If the post is praise, thank them warmly and briefly. Do not apologise.
 
 Return JSON only, exactly these keys:
   draft      the reply text
   rationale  one sentence on the approach you took
 """
-
 
 @observe(name="write_draft")
 def write_draft(rec, t, context):
