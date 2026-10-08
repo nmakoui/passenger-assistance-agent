@@ -1,8 +1,8 @@
 """
 CLI for the Passenger Assistance Agent.
 
-    python run.py                                  bluesky, 10 records
-    python run.py --sources bluesky web --limit 15
+    python run.py                                  bluesky + youtube, 10 records
+    python run.py --sources bluesky --limit 15
     python run.py --sources all --limit 20
     python run.py --dry-run                        fetch only, no LLM calls
 
@@ -12,19 +12,38 @@ Writes a review queue to output/. Nothing is ever posted.
 import argparse
 import json
 import os
+import time
 from collections import Counter
 from datetime import datetime
 
 import agent
 import sources
-import time
 
-ALL = ["bluesky", "web", "hackernews", "appstore", "youtube"]
+ALL = ["bluesky", "youtube", "web", "hackernews", "appstore"]
+
+
+def round_robin_by_source(records):
+    """Interleave records so a low --limit still shows every source.
+
+    YouTube loses about 80% of its records at the keyword gate and Bluesky
+    far less, so taking the first N in fetch order would be almost all
+    Bluesky. Interleaving after the gate keeps the demo honest.
+    """
+    by_source = {}
+    for r in records:
+        by_source.setdefault(r["source"], []).append(r)
+
+    out = []
+    for i in range(max((len(v) for v in by_source.values()), default=0)):
+        for v in by_source.values():
+            if i < len(v):
+                out.append(v[i])
+    return out
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--sources", nargs="+", default=["bluesky"])
+    ap.add_argument("--sources", nargs="+", default=["bluesky", "youtube"])
     ap.add_argument("--limit", type=int, default=10,
                     help="max records sent to the LLM")
     ap.add_argument("--out", default="output")
@@ -44,6 +63,8 @@ def main():
     kept = [r for r in records if agent.prefilter(r)[0]]
     print(f"\n{len(records)} fetched -> {len(kept)} passed the keyword gate "
           f"({len(records) - len(kept)} dropped before any LLM call)")
+
+    kept = round_robin_by_source(kept)
 
     if args.dry_run:
         for r in kept[:args.limit]:

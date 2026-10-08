@@ -312,8 +312,14 @@ REGISTRY = {
 }
 
 
-def fetch_all(sources=("bluesky", "appstore")):
-    out = []
+def fetch_all(sources=("bluesky", "youtube")):
+    """Fetch each source, then interleave them.
+
+    Concatenating would mean a low --limit only ever reaches the first source,
+    so the sources are round-robinned instead: the first N records always
+    include both.
+    """
+    buckets = []
     for name in sources:
         fn = REGISTRY.get(name)
         if not fn:
@@ -322,9 +328,14 @@ def fetch_all(sources=("bluesky", "appstore")):
         print(f"  fetching {name}...")
         got = fn()
         print(f"    {len(got)} records")
-        out.extend(got)
-    return dedupe(out)
+        buckets.append(got)
 
+    out = []
+    for i in range(max((len(b) for b in buckets), default=0)):
+        for b in buckets:
+            if i < len(b):
+                out.append(b[i])
+    return dedupe(out)
 
 if __name__ == "__main__":
     recs = fetch_all(("bluesky",))
