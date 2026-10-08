@@ -14,12 +14,14 @@ Nothing is ever posted. Every draft is marked for human review.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
-import logging
-logging.getLogger("google_genai.models").setLevel(logging.ERROR)
+import time
 
 from dotenv import load_dotenv
+
+logging.getLogger("google_genai.models").setLevel(logging.ERROR)
 
 load_dotenv()
 
@@ -51,10 +53,10 @@ def client():
 def llm_json(prompt, system, model=TRIAGE_MODEL, temperature=0.2, retries=3):
     """One LLM call that must return JSON.
 
-    Retries with a backoff on 503, which gemini-flash-latest returns under
-    load, and falls back to the lite model on the last attempt.
+    Retries on the two failures the free tier actually throws: 503 when the
+    model is busy, and 429 when the per-minute quota is spent. A 429 needs a
+    long wait, not an exponential one, so it is handled separately.
     """
-    import time
     from google.genai import types
 
     cfg = types.GenerateContentConfig(
@@ -77,10 +79,12 @@ def llm_json(prompt, system, model=TRIAGE_MODEL, temperature=0.2, retries=3):
                       f"{type(e).__name__}: {msg[:100]}")
                 return {}
             # 429 is a per-minute quota. Backing off 2s is pointless.
-            wait = 30 if "RESOURCE_EXHAUSTED" in msg or "429" in msg else 2 ** attempt
+            wait = 30 if ("RESOURCE_EXHAUSTED" in msg or "429" in msg) else 2 ** attempt
             print(f"    [llm] {type(e).__name__}, retrying in {wait}s")
             time.sleep(wait)
     return {}
+
+
 # --------------------------------------------------- 0. cheap gate, no LLM --
 # Kills obvious noise before spending a call on it. Mostly US transit alerts
 # and posts that merely contain the word "assistance".
@@ -202,7 +206,8 @@ def gather_context(query, max_results=3):
     return [{"title": r.get("title", ""), "url": r.get("url", ""),
              "snippet": (r.get("content") or "")[:400]}
             for r in resp.get("results", [])]
-            
+
+
 # --------------------------------------------------------------- 3. DRAFT? --
 # Rule first, LLM second. Severity and category decide, not vibes.
 
@@ -217,9 +222,11 @@ ESCALATE_WORDS = [
 def draft_decision(rec, t):
     """Returns (action, reason) where action is skip | escalate | draft.
 
-    Rule first, LLM second. Note the praise guard: a passenger travelling to a
-    hospital appointment is not a safeguarding case, and an early version of
-    this escalated exactly that post.
+    Two guards here came from watching real output:
+      - the praise guard: a passenger travelling to a hospital appointment is
+        not a safeguarding case, and an early version escalated exactly that.
+      - the skip rule reads category AND severity: reading category alone threw
+        away a real complaint about Euston that triage had filed as "other".
     """
     text = rec["text"].lower()
 
@@ -229,7 +236,9 @@ def draft_decision(rec, t):
     if t["severity"] == "high":
         return "escalate", "high severity, a specialist should see it first"
     if t["category"] == "other" and t["severity"] == "low":
-        return "skip", "too vague to reply to usefully"    return "draft", f"{t['category']}, {t['severity']} severity"
+        return "skip", "too vague to reply to usefully"
+    return "draft", f"{t['category']}, {t['severity']} severity"
+
 
 DRAFT_SYSTEM = """You draft replies for a UK rail passenger assistance team.
 A human reviews every draft before it goes anywhere. You never post.
