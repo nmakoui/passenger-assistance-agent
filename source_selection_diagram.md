@@ -1,10 +1,7 @@
-@'
-
----
-
 # Source selection
 
-Six sources were evaluated before the flow above was built. Two were kept.
+Five sources were tested and two more ruled out on access, before the decision
+flow was built. Two are in the final run.
 
 ```mermaid
 flowchart LR
@@ -24,4 +21,3 @@ flowchart LR
     class AR,HR,RR drop
     class WR move
 ```
-'@ | Add-Content -Encoding utf8 diagram.md

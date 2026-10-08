@@ -1,5 +1,4 @@
-﻿@'
-# Decision flow
+﻿# Decision flow
 
 ```mermaid
 flowchart TD
@@ -34,4 +33,3 @@ flowchart TD
     class E2 halt
     class G out
 ```
-'@ | Set-Content -Encoding utf8 diagram.md
