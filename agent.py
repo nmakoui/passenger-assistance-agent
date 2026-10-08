@@ -29,13 +29,27 @@ TRIAGE_MODEL = "gemini-flash-lite-latest"   # aliases roll forward, never pin
 DRAFT_MODEL = "gemini-flash-lite-latest"
 
 # ------------------------------------------------------- tracing (optional) -
+# Langfuse v4 is OpenTelemetry-based: spans are batched and must be flushed
+# before the process exits, or they are silently dropped.
 try:
-    from langfuse import observe
-except ImportError:
+    from langfuse import observe, get_client
+    _lf = get_client()
+except Exception:
+    _lf = None
+
     def observe(*a, **k):
         def deco(fn):
             return fn
         return deco if not a else a[0]
+
+
+def flush_traces():
+    """Call once at the end of a run. Safe when Langfuse is not configured."""
+    if _lf is not None:
+        try:
+            _lf.flush()
+        except Exception as e:
+            print(f"  [langfuse] flush failed: {type(e).__name__}")
 
 
 # ------------------------------------------------------------------- LLM ----

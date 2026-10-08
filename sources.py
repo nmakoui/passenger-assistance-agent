@@ -187,8 +187,10 @@ def fetch_hackernews(queries=None, hits=20):
 # Tavily is 1,000 credits/month. Keep the query list short and never loop it.
 
 WEB_QUERIES = [
-    "passenger assistance failed train station complaint UK",
     "railforums passenger assist experience",
+    "passenger assistance train station complaint UK",
+    "\"passenger assist\" didn't turn up review",
+    "trustpilot UK train assisted travel disabled",
 ]
 
 

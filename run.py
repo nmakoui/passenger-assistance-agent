@@ -110,6 +110,7 @@ def main():
 
     print(f"\n  {md_path}")
     print(f"  {json_path}")
+    agent.flush_traces()
 
 
 if __name__ == "__main__":
