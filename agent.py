@@ -71,11 +71,13 @@ def llm_json(prompt, system, model=TRIAGE_MODEL, temperature=0.2, retries=3):
             raw = re.sub(r"^```(?:json)?|```$", "", raw).strip()
             return json.loads(raw)
         except Exception as e:
+            msg = str(e)
             if attempt == retries:
                 print(f"    [llm] failed after {retries} tries: "
-                      f"{type(e).__name__}: {str(e)[:100]}")
+                      f"{type(e).__name__}: {msg[:100]}")
                 return {}
-            wait = 2 ** attempt
+            # 429 is a per-minute quota. Backing off 2s is pointless.
+            wait = 30 if "RESOURCE_EXHAUSTED" in msg or "429" in msg else 2 ** attempt
             print(f"    [llm] {type(e).__name__}, retrying in {wait}s")
             time.sleep(wait)
     return {}
@@ -183,10 +185,13 @@ def needs_context(rec):
 @observe(name="gather_context")
 def gather_context(query, max_results=3):
     """One Tavily search. Credits are limited, so this is never looped."""
-    from tavily import TavilyClient
-
     key = os.getenv("TAVILY_API_KEY")
     if not key or not query:
+        return []
+    try:
+        from tavily import TavilyClient
+    except ImportError:
+        print("    [context] tavily not installed, skipping context")
         return []
     try:
         resp = TavilyClient(api_key=key.strip()).search(
@@ -197,8 +202,7 @@ def gather_context(query, max_results=3):
     return [{"title": r.get("title", ""), "url": r.get("url", ""),
              "snippet": (r.get("content") or "")[:400]}
             for r in resp.get("results", [])]
-
-
+            
 # --------------------------------------------------------------- 3. DRAFT? --
 # Rule first, LLM second. Severity and category decide, not vibes.
 
@@ -224,9 +228,8 @@ def draft_decision(rec, t):
         return "escalate", f"escalation keyword present ('{hit}')"
     if t["severity"] == "high":
         return "escalate", "high severity, a specialist should see it first"
-    if t["category"] == "other":
-        return "skip", "too vague to reply to usefully"
-    return "draft", f"{t['category']}, {t['severity']} severity"
+    if t["category"] == "other" and t["severity"] == "low":
+        return "skip", "too vague to reply to usefully"    return "draft", f"{t['category']}, {t['severity']} severity"
 
 DRAFT_SYSTEM = """You draft replies for a UK rail passenger assistance team.
 A human reviews every draft before it goes anywhere. You never post.
