@@ -1,0 +1,5 @@
+requests>=2.31
+python-dotenv>=1.0
+tavily-python>=0.5
+google-genai>=1.0
+groq>=0.11
