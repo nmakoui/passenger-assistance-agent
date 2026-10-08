@@ -119,7 +119,13 @@ NOT_UK = [
     "njtransit", "nj transit", "northeast corridor", "amtrak", "mta",
     "metro-north", "lirr", "septa", "bart", "caltrain", "psny",
 ]
-
+# Hostility aimed at disabled passengers is not a service complaint and must
+# never reach the drafting path. Dropped at the gate, logged, never replied to.
+HOSTILE = [
+    "ban them", "shouldn't be allowed", "should not be allowed",
+    "hold up a whole", "find there own way", "find their own way",
+    "waste of money", "scrounger",
+]
 
 def prefilter(rec):
     """No LLM. Returns (keep: bool, reason: str)."""
@@ -132,6 +138,8 @@ def prefilter(rec):
         return False, "no assistance keyword"
     if not any(w in text for w in RAIL_WORDS):
         return False, "no rail context"
+    if any(w in text for w in HOSTILE):
+        return False, "hostile content, not a service complaint"
     return True, "passed keyword gate"
 
 
@@ -278,6 +286,10 @@ Rules, all mandatory:
 - Two sentences is usually enough. Under 280 characters for bluesky, under 120
   words elsewhere.
 - British English. Plain words.
+- You write on behalf of the team that runs the Passenger Assistance service,
+  not the train operator. Never say "our staff", "our teams" or "our stations"
+  about station or train staff. They work for the operator. Say "the team at
+  Exeter" or "the staff there", never "our team at Exeter".
 - If the post is praise, thank them warmly and briefly. Do not apologise.
 
 Return JSON only, exactly these keys:

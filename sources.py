@@ -224,32 +224,54 @@ def fetch_web(queries=None, max_results=5):
 # search = 100 quota units, commentThreads = 1. Daily budget is 10,000.
 # One call to this function costs ~103 units. Do not put it in a loop.
 
-def fetch_youtube(query="passenger assistance train uk", max_videos=3, max_comments=20):
+YOUTUBE_QUERIES = [
+    "passenger assist train uk wheelchair",
+    "disabled train travel uk experience",
+    "wheelchair accessible rail travel britain",
+    "assisted travel train station uk",
+]
+
+
+def fetch_youtube(queries=None, max_videos=8, max_comments=100):
+    """Search videos, then pull their comment threads.
+
+    Quota: search costs 100 units each, commentThreads costs 1. The daily cap
+    is 10,000, so four searches plus their comment calls is about 450.
+    """
     key = os.getenv("YOUTUBE_API_KEY")
     if not key:
         print("  [youtube] no YOUTUBE_API_KEY, skipping")
         return []
     key = key.strip()
-    out = []
-    try:
-        r = requests.get(
-            "https://www.googleapis.com/youtube/v3/search",
-            params={"part": "snippet", "q": query, "maxResults": max_videos,
-                    "type": "video", "relevanceLanguage": "en", "key": key},
-            timeout=TIMEOUT,
-        )
-        r.raise_for_status()
-        video_ids = [i["id"]["videoId"] for i in r.json().get("items", [])]
-    except Exception as e:
-        print(f"  [youtube] search failed: {type(e).__name__}")
-        return []
+    queries = queries or YOUTUBE_QUERIES
 
-    for vid in video_ids:
+    video_ids = {}
+    for q in queries:
+        try:
+            r = requests.get(
+                "https://www.googleapis.com/youtube/v3/search",
+                params={"part": "snippet", "q": q, "maxResults": max_videos,
+                        "type": "video", "relevanceLanguage": "en",
+                        "regionCode": "GB", "key": key},
+                timeout=TIMEOUT,
+            )
+            r.raise_for_status()
+        except Exception as e:
+            print(f"  [youtube] search '{q}' failed: {type(e).__name__}")
+            continue
+        for item in r.json().get("items", []):
+            video_ids[item["id"]["videoId"]] = item["snippet"]["title"]
+
+    print(f"  [youtube] {len(video_ids)} unique videos from {len(queries)} searches")
+
+    out = []
+    for vid, title in video_ids.items():
         try:
             r = requests.get(
                 "https://www.googleapis.com/youtube/v3/commentThreads",
                 params={"part": "snippet", "videoId": vid,
-                        "maxResults": max_comments, "textFormat": "plainText",
+                        "maxResults": min(max_comments, 100),
+                        "order": "relevance", "textFormat": "plainText",
                         "key": key},
                 timeout=TIMEOUT,
             )
@@ -259,14 +281,12 @@ def fetch_youtube(query="passenger assistance train uk", max_videos=3, max_comme
         for item in r.json().get("items", []):
             s = item["snippet"]["topLevelComment"]["snippet"]
             out.append(make_record(
-                "youtube", item["id"], s.get("authorDisplayName", ""),
+                "youtube", item["id"],s.get("authorDisplayName", "").lstrip("@"),,
                 s.get("textOriginal", ""), s.get("publishedAt", ""),
                 f"https://www.youtube.com/watch?v={vid}&lc={item['id']}",
-                {"video_id": vid},
+                {"video_id": vid, "video_title": title},
             ))
     return dedupe(out)
-
-
 # ------------------------------------------------------------------ all ----
 
 REGISTRY = {
