@@ -1,10 +1,15 @@
-﻿# Decision flow
+﻿@'
+# Decision flow
 
 ```mermaid
 flowchart TD
-    A["COLLECT<br/>Bluesky posts · Web search (Tavily) · Hacker News"]
+    A["COLLECT<br/>Bluesky posts · YouTube comments"]
     B["Normalise to one record shape<br/>dedupe · redact emails and phone numbers"]
-    A --> B --> C
+    A --> B --> P
+
+    P{"PREFILTER (no LLM)<br/>keywords · UK rail · not hostile"}
+    P -->|drop| P1["Logged, no LLM call"]
+    P -->|pass| C
 
     C{"1. RELEVANT?<br/>LLM triage →<br/>relevant · category · severity · reason"}
     C -->|no| C1["Log reason, stop"]
@@ -23,7 +28,10 @@ flowchart TD
     F --> G["Output marked DRAFT — FOR HUMAN REVIEW<br/>never posted"]
 
     classDef stop fill:#f5f5f5,stroke:#999,color:#333
+    classDef halt fill:#fdeaea,stroke:#c66,color:#933
     classDef out fill:#e8f4ea,stroke:#4a7,color:#1a3
-    class C1,E1 stop
-    class E2,G out
+    class C1,E1,P1 stop
+    class E2 halt
+    class G out
 ```
+'@ | Set-Content -Encoding utf8 diagram.md
